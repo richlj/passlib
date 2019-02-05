@@ -48,6 +48,21 @@ func match(a, b *string) bool {
 	return result
 }
 
+// testMatch returns a bool as to whether the pointer receiver matches the
+// supplied filter pointer slice
+func (a *Item) testMatch(filter []*string) bool {
+	if len(a.Path) == len(filter)-1 &&
+		match(a.Credentials.Username, filter[len(filter)-1]) {
+		for i := 0; i < len(filter)-1; i++ {
+			if !match(a.Path[i], filter[i]) {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
 // getDirectoryPath returns the filepath of the overall directory used to
 // store credentials by the application
 func getDirectoryPath() (*string, error) {
