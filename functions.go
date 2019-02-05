@@ -63,6 +63,14 @@ func (a *Item) testMatch(filter []*string) bool {
 	return false
 }
 
+// appendIfValid adds the supplied Item if it matches the filter variables
+func (a *Items) appendIfValid(item *Item, filter []*string) {
+	if item.testMatch(filter) {
+		a.Items = append(a.Items, item)
+	}
+	return
+}
+
 // getDirectoryPath returns the filepath of the overall directory used to
 // store credentials by the application
 func getDirectoryPath() (*string, error) {
