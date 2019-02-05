@@ -15,6 +15,25 @@ const (
 	separator       = "/"
 )
 
+// listAll returns path information for all credentials
+func listAll() (*Items, error) {
+	filepaths, err := getFilepaths()
+	if err != nil {
+		return nil, err
+	}
+	var result Items
+	for _, filepath := range filepaths {
+		item, err := extractItem(filepath)
+		if err != nil {
+			return nil, err
+		}
+		if item != nil {
+			result.Items = append(result.Items, item)
+		}
+	}
+	return &result, nil
+}
+
 // getDirectoryPath returns the filepath of the overall directory used to
 // store credentials by the application
 func getDirectoryPath() (*string, error) {
