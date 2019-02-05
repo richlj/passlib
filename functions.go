@@ -115,3 +115,13 @@ func getFilepaths() ([]*string, error) {
 		}
 	}
 }
+
+// getCredentialPath returns the path for a set of credentials, as understood
+// by the application
+func (a *Item) getCredentialPath() string {
+	var result string
+	for _, dir := range a.Path {
+		result = path.Join(result, *dir)
+	}
+	return path.Join(result, *a.Credentials.Username)
+}
