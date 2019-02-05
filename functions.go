@@ -70,3 +70,15 @@ func extractItem(filePath *string) (*Item, error) {
 	}
 	return nil, nil
 }
+
+// extractDirectories takes a map of items and their directory status,
+// returning a string of any directories within that
+func extractDirectories(a map[string]bool) []*string {
+	var result []*string
+	for key, value := range a {
+		if value {
+			result = append(result, &key)
+		}
+	}
+	return result
+}
