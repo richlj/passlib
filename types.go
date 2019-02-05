@@ -11,3 +11,8 @@ type Item struct {
 	Path        []*string
 	Credentials *Credentials
 }
+
+// Items contains data about zero or more Items
+type Items struct {
+	Items []*Item
+}
