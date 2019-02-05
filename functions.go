@@ -1,6 +1,7 @@
 package pass
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os/user"
 	"path"
@@ -32,6 +33,19 @@ func listAll() (*Items, error) {
 		}
 	}
 	return &result, nil
+}
+
+// match returns a bool as to whether the value in first pointer slice
+// argument is contained within the value in the second pointer slice argument
+func match(a, b *string) bool {
+	if a == nil || b == nil {
+		return false
+	}
+	result, err := regexp.MatchString(fmt.Sprintf(".*%s.*", *b), *a)
+	if err != nil {
+		return false
+	}
+	return result
 }
 
 // getDirectoryPath returns the filepath of the overall directory used to
