@@ -37,6 +37,22 @@ func listAll() (*Items, error) {
 	return &result, nil
 }
 
+// List returns a list of items that match the supplied filter
+func List(filter []*string) (*Items, error) {
+	all, err := listAll()
+	if err != nil {
+		return nil, err
+	}
+	if len(filter) == 0 {
+		return all, nil
+	}
+	var result Items
+	for _, item := range all.Items {
+		result.appendIfValid(item, filter)
+	}
+	return &result, nil
+}
+
 // match returns a bool as to whether the value in first pointer slice
 // argument is contained within the value in the second pointer slice argument
 func match(a, b *string) bool {
