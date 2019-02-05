@@ -82,3 +82,36 @@ func extractDirectories(a map[string]bool) []*string {
 	}
 	return result
 }
+
+// getFilepaths returns a list of filepaths for local pass credentials files
+func getFilepaths() ([]*string, error) {
+	dir, err := getDirectoryPath()
+	if err != nil {
+		return nil, err
+	}
+	a := map[string]bool{*dir: true}
+	for {
+		dirRemaining := false
+		for key, value := range a {
+			if value {
+				dirRemaining = true
+				contents, err := listDirContents(key)
+				if err != nil {
+					return nil, err
+				}
+				for key, value := range *contents {
+					a[key] = value
+				}
+				delete(a, key)
+			}
+		}
+		if !dirRemaining {
+			var result []*string
+			for key := range a {
+				elem := key
+				result = append(result, &elem)
+			}
+			return result, nil
+		}
+	}
+}
