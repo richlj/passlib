@@ -53,6 +53,35 @@ func List(filter []*string) (*Items, error) {
 	return &result, nil
 }
 
+// Get takes arguments about the identity of a set of credentials. If there is
+// exactly one result it returns a Details item, otherwise, or if the
+// credential has no path, it returns an error
+func Get(filter []*string) (*Item, error) {
+	a, err := List(filter)
+	if err != nil {
+		return nil, err
+	}
+	if matches := len(a.Items); matches == 0 {
+		return nil, fmt.Errorf("credentials not found")
+	} else if matches > 1 {
+		return nil, fmt.Errorf("ambiguous query")
+	}
+	password, err := a.Items[0].getPassword()
+	if err != nil {
+		return nil, err
+	}
+	if len(a.Items[0].Path) == 0 {
+		return nil, fmt.Errorf("credentials lack path")
+	}
+	return &Item{
+		Path: a.Items[0].Path[:len(a.Items[0].Path)-1],
+		Credentials: &Credentials{
+			Username: a.Items[0].Credentials.Username,
+			Password: password,
+		},
+	}, nil
+}
+
 // match returns a bool as to whether the value in first pointer slice
 // argument is contained within the value in the second pointer slice argument
 func match(a, b *string) bool {
