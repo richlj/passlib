@@ -3,6 +3,7 @@ package pass
 import (
 	"fmt"
 	"io/ioutil"
+	"os/exec"
 	"os/user"
 	"path"
 	"path/filepath"
@@ -14,6 +15,7 @@ const (
 	mainDirectory   = ".password-store"
 	fileSuffixREStr = "([\\d\\D]{1,}.*)\\.gpg"
 	separator       = "/"
+	executableName  = "pass"
 )
 
 // listAll returns path information for all credentials
@@ -180,4 +182,15 @@ func (a *Item) getCredentialPath() string {
 		result = path.Join(result, *dir)
 	}
 	return path.Join(result, *a.Credentials.Username)
+}
+
+// getPassword retrieves a password for an item
+func (a *Item) getPassword() (*string, error) {
+	cmd := exec.Command(executableName, a.getCredentialPath())
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, err
+	}
+	password := string(output[:len(output)-1])
+	return &password, nil
 }
