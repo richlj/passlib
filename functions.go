@@ -38,7 +38,7 @@ func listAll() (*Items, error) {
 }
 
 // List returns a list of items that match the supplied filter
-func List(filter []*string) (*Items, error) {
+func List(filter ...string) (*Items, error) {
 	all, err := listAll()
 	if err != nil {
 		return nil, err
@@ -46,9 +46,13 @@ func List(filter []*string) (*Items, error) {
 	if len(filter) == 0 {
 		return all, nil
 	}
+	var newFilter []*string
+	for i := 0; i < len(filter); i++ {
+		newFilter = append(newFilter, &filter[i])
+	}
 	var result Items
 	for _, item := range all.Items {
-		result.appendIfValid(item, filter)
+		result.appendIfValid(item, newFilter)
 	}
 	return &result, nil
 }
@@ -56,8 +60,8 @@ func List(filter []*string) (*Items, error) {
 // Get takes arguments about the identity of a set of credentials. If there is
 // exactly one result it returns a Details item, otherwise, or if the
 // credential has no path, it returns an error
-func Get(filter []*string) (*Item, error) {
-	a, err := List(filter)
+func Get(filter ...string) (*Item, error) {
+	a, err := List(filter...)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +104,7 @@ func match(a, b *string) bool {
 func (a *Item) testMatch(filter []*string) bool {
 	if len(a.Path) == len(filter)-1 &&
 		match(a.Credentials.Username, filter[len(filter)-1]) {
-		for i := 0; i < len(filter)-1; i++ {
+		for i := len(filter) - 2; i >= 0; i-- {
 			if !match(a.Path[i], filter[i]) {
 				return false
 			}
