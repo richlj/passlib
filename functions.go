@@ -78,7 +78,7 @@ func Get(filter ...string) (*Item, error) {
 		return nil, fmt.Errorf("credentials lack path")
 	}
 	return &Item{
-		Path: a.Items[0].Path[:len(a.Items[0].Path)-1],
+		Path: a.Items[0].Path,
 		Credentials: &Credentials{
 			Username: a.Items[0].Credentials.Username,
 			Password: password,
