@@ -38,21 +38,18 @@ func listAll() (*Items, error) {
 }
 
 // List returns a list of items that match the supplied filter
-func List(filter ...string) (*Items, error) {
+func List(filter string) (*Items, error) {
+	re, err := regexp.Compile(filter)
+	if err != nil {
+		return nil, err
+	}
 	all, err := listAll()
 	if err != nil {
 		return nil, err
 	}
-	if len(filter) == 0 {
-		return all, nil
-	}
-	var newFilter []*string
-	for i := 0; i < len(filter); i++ {
-		newFilter = append(newFilter, &filter[i])
-	}
 	var result Items
 	for _, item := range all.Items {
-		result.appendIfValid(item, newFilter)
+		result.appendIfValid(item, re)
 	}
 	return &result, nil
 }
@@ -60,8 +57,8 @@ func List(filter ...string) (*Items, error) {
 // Get takes arguments about the identity of a set of credentials. If there is
 // exactly one result it returns a Details item, otherwise, or if the
 // credential has no path, it returns an error
-func Get(filter ...string) (*Item, error) {
-	a, err := List(filter...)
+func Get(filter string) (*Item, error) {
+	a, err := List(filter)
 	if err != nil {
 		return nil, err
 	}
@@ -86,37 +83,23 @@ func Get(filter ...string) (*Item, error) {
 	}, nil
 }
 
-// match returns a bool as to whether the value in first pointer slice
-// argument is contained within the value in the second pointer slice argument
-func match(a, b *string) bool {
-	if a == nil || b == nil {
-		return false
+// String .
+func (a *Item) String() string {
+	var result string
+	for _, item := range a.Path {
+		if item != nil {
+			result = path.Join(result, *item)
+		}
 	}
-	result, err := regexp.MatchString(fmt.Sprintf(".*%s.*", *b), *a)
-	if err != nil {
-		return false
+	if a.Credentials.Username != nil {
+		result = path.Join(result, *a.Credentials.Username)
 	}
 	return result
 }
 
-// testMatch returns a bool as to whether the pointer receiver matches the
-// supplied filter pointer slice
-func (a *Item) testMatch(filter []*string) bool {
-	if len(a.Path) == len(filter)-1 &&
-		match(a.Credentials.Username, filter[len(filter)-1]) {
-		for i := len(filter) - 2; i >= 0; i-- {
-			if !match(a.Path[i], filter[i]) {
-				return false
-			}
-		}
-		return true
-	}
-	return false
-}
-
-// appendIfValid adds the supplied Item if it matches the filter variables
-func (a *Items) appendIfValid(item *Item, filter []*string) {
-	if item.testMatch(filter) {
+// appendIfValid adds the supplied Item if it matches the regex
+func (a *Items) appendIfValid(item *Item, re *regexp.Regexp) {
+	if re.Match([]byte(item.String())) {
 		a.Items = append(a.Items, item)
 	}
 	return
