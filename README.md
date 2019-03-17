@@ -1,4 +1,5 @@
-# passlib
+# passlib [![Build Status](https://travis-ci.org/richlj/passlib.svg?branch=master)](https://travis-ci.org/richlj/passlib)
+
 passlib is a Go-based harm reduction program for credentials stored in the
 local [development] environment.
 
@@ -8,6 +9,7 @@ It requires GUI passphrase management software such as GNOME Keyring for GPG
 decryption.
 
 ## Usage
+
 ```go
 import "github.com/richlj/passlib"
 
