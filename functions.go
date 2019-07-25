@@ -78,7 +78,7 @@ func Get(filter string) (*Item, error) {
 		Path: a.Items[0].Path,
 		Credentials: &Credentials{
 			Username: a.Items[0].Credentials.Username,
-			Password: password,
+			Password: password.String(),
 		},
 	}, nil
 }
@@ -91,8 +91,8 @@ func (a *Item) String() string {
 			result = path.Join(result, *item)
 		}
 	}
-	if a.Credentials.Username != nil {
-		result = path.Join(result, *a.Credentials.Username)
+	if len(a.Credentials.Username) > 0 {
+		result = path.Join(result, a.Credentials.Username)
 	}
 	return result
 }
@@ -154,7 +154,7 @@ func extractItem(filePath *string) (*Item, error) {
 		return &Item{
 			Path: path,
 			Credentials: &Credentials{
-				Username: &elements[len(elements)-1],
+				Username: elements[len(elements)-1],
 			},
 		}, nil
 	}
@@ -213,16 +213,22 @@ func (a *Item) getCredentialPath() string {
 	for _, dir := range a.Path {
 		result = path.Join(result, *dir)
 	}
-	return path.Join(result, *a.Credentials.Username)
+	return path.Join(result, a.Credentials.Username)
 }
 
 // getPassword retrieves a password for an item
-func (a *Item) getPassword() (*string, error) {
+func (a *Item) getPassword() (*password, error) {
 	cmd := exec.Command(executableName, a.getCredentialPath())
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, err
 	}
-	password := string(output[:len(output)-1])
-	return &password, nil
+	return &password{string(output[:len(output)-1])}, nil
+}
+
+func (p *password) String() string {
+	if p != nil && len(p.Password) > 0 {
+		return p.Password
+	}
+	return ""
 }
