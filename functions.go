@@ -99,7 +99,7 @@ func (a *Item) String() string {
 
 // appendIfValid adds the supplied Item if it matches the regex
 func (a *Items) appendIfValid(item *Item, re *regexp.Regexp) {
-	if re.Match([]byte(item.String())) {
+	if re.MatchString(item.String()) {
 		a.Items = append(a.Items, item)
 	}
 	return
