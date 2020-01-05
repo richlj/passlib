@@ -13,32 +13,32 @@ import (
 
 const (
 	mainDirectory   = ".password-store"
-	fileSuffixREStr = "([\\d\\D]{1,}.*)\\.gpg"
+	fileSuffixREStr = "(.+)\\.gpg"
 	separator       = "/"
 	executableName  = "pass"
 )
 
 // listAll returns path information for all credentials
-func listAll() (*Items, error) {
+func listAll() ([]Item, error) {
 	filepaths, err := getFilepaths()
 	if err != nil {
 		return nil, err
 	}
-	var result Items
+	var result []Item
 	for _, filepath := range filepaths {
 		item, err := extractItem(filepath)
 		if err != nil {
 			return nil, err
 		}
 		if item != nil {
-			result.Items = append(result.Items, item)
+			result = append(result, item.value)
 		}
 	}
-	return &result, nil
+	return result, nil
 }
 
 // List returns a list of items that match the supplied filter
-func List(filter string) (*Items, error) {
+func List(filter string) ([]Item, error) {
 	re, err := regexp.Compile(filter)
 	if err != nil {
 		return nil, err
@@ -47,11 +47,13 @@ func List(filter string) (*Items, error) {
 	if err != nil {
 		return nil, err
 	}
-	var result Items
-	for _, item := range all.Items {
-		result.appendIfValid(item, re)
+	var result []Item
+	for _, item := range all {
+		if re.MatchString(item.String()) {
+			result = append(result, item)
+		}
 	}
-	return &result, nil
+	return result, nil
 }
 
 // Get takes arguments about the identity of a set of credentials. If there is
@@ -62,33 +64,34 @@ func Get(filter string) (*Item, error) {
 	if err != nil {
 		return nil, err
 	}
-	if matches := len(a.Items); matches == 0 {
+	switch n := len(a); {
+	case n < 1:
 		return nil, fmt.Errorf("credentials not found")
-	} else if matches > 1 {
+	case n > 1:
 		return nil, fmt.Errorf("ambiguous query")
 	}
-	password, err := a.Items[0].getPassword()
+	password, err := a[0].getPassword()
 	if err != nil {
 		return nil, err
 	}
-	if len(a.Items[0].Path) == 0 {
+	if len(a[0].Path.Elements) < 1 {
 		return nil, fmt.Errorf("credentials lack path")
 	}
 	return &Item{
-		Path: a.Items[0].Path,
-		Credentials: &Credentials{
-			Username: a.Items[0].Credentials.Username,
+		Path: a[0].Path,
+		Credentials: Credentials{
+			Username: a[0].Credentials.Username,
 			Password: password.String(),
 		},
 	}, nil
 }
 
-// String .
+// String returns the path of an item in string form
 func (a *Item) String() string {
 	var result string
-	for _, item := range a.Path {
-		if item != nil {
-			result = path.Join(result, *item)
+	for _, item := range a.Path.Elements {
+		if len(item.Element) > 0 {
+			result = path.Join(result, item.Element)
 		}
 	}
 	if len(a.Credentials.Username) > 0 {
@@ -97,28 +100,27 @@ func (a *Item) String() string {
 	return result
 }
 
-// appendIfValid adds the supplied Item if it matches the regex
-func (a *Items) appendIfValid(item *Item, re *regexp.Regexp) {
-	if re.MatchString(item.String()) {
-		a.Items = append(a.Items, item)
+func (a *Items) String() []string {
+	var result []string
+	for _, i := range a.Items {
+		result = append(result, fmt.Sprintf("%s\n", i.String()))
 	}
-	return
+	return result
 }
 
 // getDirectoryPath returns the filepath of the overall directory used to
 // store credentials by the application
-func getDirectoryPath() (*string, error) {
+func getDirectoryPath() (*directory, error) {
 	usr, err := user.Current()
 	if err != nil {
 		return nil, err
 	}
-	dir := filepath.Join(usr.HomeDir, mainDirectory)
-	return &dir, nil
+	return &directory{filepath.Join(usr.HomeDir, mainDirectory)}, nil
 }
 
 // listDirContents returns a map of the names of the immediate contents of a
 // directory, and whether or not that item is itself a directory
-func listDirContents(dir string) (*map[string]bool, error) {
+func listDirContents(dir string) (map[string]bool, error) {
 	result := make(map[string]bool)
 	contents, err := ioutil.ReadDir(dir)
 	if err != nil {
@@ -132,55 +134,54 @@ func listDirContents(dir string) (*map[string]bool, error) {
 			result[path] = false
 		}
 	}
-	return &result, nil
+	return result, nil
 }
 
 // extractItem takes a path of a pass file and converts it into an *Item
-func extractItem(filePath *string) (*Item, error) {
-	dir, err := getDirectoryPath()
+func extractItem(filePath string) (*itemWrapper, error) {
+	d, err := getDirectoryPath()
 	if err != nil {
 		return nil, err
 	}
-	re, err := regexp.Compile(path.Join(*dir, fileSuffixREStr))
+	re, err := regexp.Compile(path.Join(d.Directory, fileSuffixREStr))
 	if err != nil {
 		return nil, err
 	}
-	if c := re.FindStringSubmatch(*filePath); len(c) == 2 {
+	if c := re.FindStringSubmatch(filePath); len(c) == 2 {
 		elements := strings.Split(c[1], separator)
-		var path []*string
+		var path Path
 		for i := 0; i < len(elements)-1; i++ {
-			path = append(path, &elements[i])
+			path.Elements = append(path.Elements, element{elements[i]})
 		}
-		return &Item{
+		return &itemWrapper{Item{
 			Path: path,
-			Credentials: &Credentials{
+			Credentials: Credentials{
 				Username: elements[len(elements)-1],
 			},
-		}, nil
+		}}, nil
 	}
 	return nil, nil
 }
 
 // extractDirectories takes a map of items and their directory status,
 // returning a string of any directories within that
-func extractDirectories(a map[string]bool) []*string {
-	var result []*string
+func extractDirectories(a map[string]bool) []string {
+	var result []string
 	for key, value := range a {
 		if value {
-			result = append(result, &key)
+			result = append(result, key)
 		}
 	}
 	return result
 }
 
 // getFilepaths returns a list of filepaths for local pass credentials files
-func getFilepaths() ([]*string, error) {
-	dir, err := getDirectoryPath()
+func getFilepaths() ([]string, error) {
+	d, err := getDirectoryPath()
 	if err != nil {
 		return nil, err
 	}
-	a := map[string]bool{*dir: true}
-	for {
+	for a := map[string]bool{d.Directory: true}; ; {
 		dirRemaining := false
 		for key, value := range a {
 			if value {
@@ -189,17 +190,16 @@ func getFilepaths() ([]*string, error) {
 				if err != nil {
 					return nil, err
 				}
-				for key, value := range *contents {
+				for key, value := range contents {
 					a[key] = value
 				}
 				delete(a, key)
 			}
 		}
 		if !dirRemaining {
-			var result []*string
+			var result []string
 			for key := range a {
-				elem := key
-				result = append(result, &elem)
+				result = append(result, key)
 			}
 			return result, nil
 		}
@@ -210,8 +210,8 @@ func getFilepaths() ([]*string, error) {
 // by the application
 func (a *Item) getCredentialPath() string {
 	var result string
-	for _, dir := range a.Path {
-		result = path.Join(result, *dir)
+	for _, e := range a.Path.Elements {
+		result = path.Join(result, e.Element)
 	}
 	return path.Join(result, a.Credentials.Username)
 }
@@ -227,8 +227,16 @@ func (a *Item) getPassword() (*password, error) {
 }
 
 func (p *password) String() string {
-	if p != nil && len(p.Password) > 0 {
-		return p.Password
+	if p != nil && len(p.value) > 0 {
+		return p.value
 	}
 	return ""
+}
+
+func (p *Path) String() string {
+	var result string
+	for _, e := range p.Elements {
+		result = path.Join(result, e.Element)
+	}
+	return result
 }
